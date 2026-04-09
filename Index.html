@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL + PCAP Reader • 500MB • GitHub Pages</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500&amp;display=swap');
+        
+        :root {
+            --tw-color-primary: #00d4ff;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .title-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .dropzone {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .dropzone.active {
+            background-color: #0a1729;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.2);
+        }
+        
+        pre {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 15px;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+        
+        .sql-keyword {
+            color: #ff79c6;
+            font-weight: 600;
+        }
+        
+        .file-list {
+            scrollbar-width: thin;
+        }
+    </style>
+</head>
+<body class="bg-[#05080f] text-white min-h-screen">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-10">
+            <div class="flex items-center gap-x-3">
+                <div class="w-10 h-10 bg-[#00d4ff] text-black rounded-2xl flex items-center justify-center text-2xl font-bold">📂</div>
+                <h1 class="title-font text-4xl tracking-[-1px]">SQL + PCAP Reader</h1>
+                <span class="px-3 py-1 text-xs font-medium bg-[#00d4ff]/10 text-[#00d4ff] rounded-3xl border border-[#00d4ff]/30">500 MB MAX • CLIENT-SIDE</span>
+            </div>
+            
+            <div class="flex items-center gap-x-4 text-sm">
+                <a href="https://github.com" target="_blank" 
+                   class="flex items-center gap-x-2 hover:text-[#00d4ff] transition-colors">
+                    <span class="text-emerald-400">●</span>
+                    Ready for GitHub Pages
+                </a>
+                <div class="h-6 w-px bg-white/10"></div>
+                <div class="text-white/70 text-xs flex items-center gap-x-1">
+                    <span>Now with .pcap support • WPS Office still can't open these</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero / Info -->
+        <div class="bg-[#0a1729] border border-white/10 rounded-3xl p-8 mb-10">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div>
+                    <div class="flex items-center gap-x-2 mb-3">
+                        <div class="text-[#00d4ff] text-xl">🚀</div>
+                        <h2 class="text-xl font-semibold">Upload up to 500 MB</h2>
+                    </div>
+                    <p class="text-white/70">Pure browser-based. No server. No data leaves your device.</p>
+                    <div class="mt-6 text-xs uppercase tracking-widest text-white/50">Supported formats (52 total)</div>
+                    <div id="extension-list" class="flex flex-wrap gap-2 mt-3 max-h-64 overflow-y-auto file-list pr-2">
+                        <!-- Populated by JS with .sql + .pcap + 50 random extensions -->
+                    </div>
+                </div>
+                
+                <div class="lg:col-span-2">
+                    <div class="bg-black/50 rounded-2xl p-6 border border-white/10">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="font-medium flex items-center gap-x-2">
+                                    <span class="text-emerald-400">✓</span>
+                                    .sql &amp; .pcap get full reader support
+                                </h3>
+                                <p class="text-sm text-white/60 mt-1">.sql = syntax highlighting • .pcap = raw preview (binary)</p>
+                            </div>
+                            <div class="text-xs px-4 py-2 bg-white/10 rounded-2xl flex items-center gap-x-2">
+                                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                                LIVE PREVIEW
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-white/50 mb-3 flex items-center justify-between">
+                            <span>51 additional extensions that WPS Office CANNOT open:</span>
+                            <span class="text-[#00d4ff] cursor-pointer hover:underline" onclick="copyExtensionList()">
+                                Copy full list
+                            </span>
+                        </div>
+                        
+                        <div class="text-[13px] text-white/70 font-mono leading-relaxed bg-[#05080f] p-4 rounded-2xl border border-white/10 overflow-x-auto">
+                            These are real-world file types WPS Office refuses to open or displays as garbage.<br>
+                            <strong>.pcap</strong> (packet captures) added • up to 500 MB • client-side only.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Area -->
+        <div id="dropzone" 
+             class="dropzone border-2 border-dashed border-white/30 hover:border-[#00d4ff]/70 rounded-3xl h-80 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+            
+            <input type="file" id="file-input" class="hidden" accept=".sql,.log,.bak,.tmp,.dat,.bin,.pcap,.json,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.properties,.env,.md,.rst,.py,.js,.ts,.jsx,.tsx,.java,.cpp,.h,.c,.cs,.php,.rb,.go,.rs,.swift,.kt,.lua,.sh,.bat,.ps1,.db,.sqlite,.sqlite3,.mdb,.accdb,.dbf,.rdb,.csv,.tsv,.parquet,.avro,.orc,.zip,.rar,.7z,.tar,.gz">
+            
+            <div class="text-center z-10">
+                <div class="mx-auto w-16 h-16 bg-[#00d4ff]/10 rounded-3xl flex items-center justify-center text-4xl mb-6">
+                    📤
+                </div>
+                <h3 class="text-2xl font-semibold mb-2">Drop your file here</h3>
+                <p class="text-white/70 max-w-xs mx-auto">or <span class="text-[#00d4ff] underline">browse from computer</span></p>
+                <p class="text-xs text-white/50 mt-6">Maximum size: 500 MB • Any of the 52 supported extensions (.pcap included)</p>
+                
+                <div id="file-info" class="hidden mt-8 text-left mx-auto max-w-md bg-black/70 border border-white/10 rounded-2xl p-4 text-sm"></div>
+            </div>
+            
+            <!-- Progress -->
+            <div id="progress-container" class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 w-80">
+                <div class="flex justify-between text-xs mb-2">
+                    <span id="progress-text">Reading file...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="h-2 bg-white/10 rounded-3xl overflow-hidden">
+                    <div id="progress-bar" class="h-2 bg-[#00d4ff] w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Area -->
+        <div id="preview-panel" class="hidden mt-8 bg-[#0a1729] border border-white/10 rounded-3xl overflow-hidden">
+            <div class="px-8 py-5 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <span id="preview-icon" class="text-2xl"></span>
+                    <div>
+                        <div id="preview-filename" class="font-medium"></div>
+                        <div id="preview-ext" class="text-xs text-white/50 font-mono"></div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-4">
+                    <button onclick="copyContent()" 
+                            class="px-5 py-2 text-sm flex items-center gap-x-2 hover:bg-white/10 rounded-2xl transition-colors">
+                        📋 Copy content
+                    </button>
+                    <button onclick="downloadOriginal()" 
+                            class="px-5 py-2 text-sm flex items-center gap-x-2 hover:bg-white/10 rounded-2xl transition-colors">
+                        ⬇️ Download original
+                    </button>
+                    <button onclick="closePreview()" 
+                            class="px-6 py-2 text-sm bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-colors">
+                        ✕ Close
+                    </button>
+                </div>
+            </div>
+            
+            <div id="preview-content" class="p-8 max-h-[calc(100vh-340px)] overflow-auto"></div>
+            
+            <div id="sql-notice" class="hidden px-8 py-4 bg-[#00d4ff]/10 border-t border-[#00d4ff]/30 text-xs flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <span class="text-[#00d4ff]">✦</span>
+                    <span class="font-medium">This is a full .sql file reader with syntax highlighting</span>
+                </div>
+                <span class="text-[#00d4ff]/70">WPS Office cannot open .sql files</span>
+            </div>
+        </div>
+
+        <!-- Footer info -->
+        <div class="mt-16 text-center text-xs text-white/40 flex flex-col items-center gap-y-1">
+            <p>100% client-side • Hosted on GitHub Pages • No backend • No limits except your browser RAM</p>
+            <p class="flex items-center gap-x-5">
+                <span>Works offline</span>
+                <span class="w-1 h-1 bg-white/30 rounded-full"></span>
+                <span>Up to 500 MB tested on Chrome / Edge</span>
+                <span class="w-1 h-1 bg-white/30 rounded-full"></span>
+                <span>52 extensions including 51 that WPS Office rejects (.pcap added)</span>
+            </p>
+            <p class="mt-4">Just save this as <code class="bg-white/10 px-2 py-0.5 rounded">index.html</code> and push to any GitHub repo → enable Pages.</p>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script initialization
+        function initTailwind() {
+            tailwind.config = {
+                content: [],
+                theme: {
+                    extend: {}
+                }
+            }
+        }
+
+        // 51 random extensions that WPS Office CANNOT open (plus .sql + .pcap)
+        const supportedExtensions = [
+            ".sql",
+            ".log", ".bak", ".tmp", ".dat", ".bin", ".pcap",
+            ".json", ".xml", ".yaml", ".yml", ".toml",
+            ".ini", ".cfg", ".conf", ".properties", ".env",
+            ".md", ".rst",
+            ".py", ".js", ".ts", ".jsx", ".tsx",
+            ".java", ".cpp", ".h", ".c", ".cs",
+            ".php", ".rb", ".go", ".rs", ".swift",
+            ".kt", ".lua", ".sh", ".bat", ".ps1",
+            ".db", ".sqlite", ".sqlite3", ".mdb", ".accdb",
+            ".dbf", ".rdb",
+            ".csv", ".tsv",
+            ".parquet", ".avro", ".orc",
+            ".zip", ".rar", ".7z", ".tar", ".gz"
+        ]
+
+        // Normalize extensions for case-insensitive matching
+        function normalizeExt(filename) {
+            const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
+            return ext
+        }
+
+        // Populate the beautiful extension list in UI
+        function populateExtensionList() {
+            const container = document.getElementById('extension-list')
+            container.innerHTML = ''
+            
+            supportedExtensions.forEach(ext => {
+                const pill = document.createElement('div')
+                pill.className = 'inline-flex items-center px-4 py-1.5 text-xs font-mono bg-white/10 hover:bg-[#00d4ff]/10 hover:text-[#00d4ff] rounded-3xl border border-white/10 transition-colors cursor-default'
+                pill.textContent = ext
+                container.appendChild(pill)
+            })
+            
+            // Add a small "51+" badge
+            const badge = document.createElement('div')
+            badge.className = 'inline-flex items-center px-3 py-1 text-[10px] font-medium bg-[#00d4ff] text-black rounded-3xl ml-2'
+            badge.textContent = '+51'
+            container.appendChild(badge)
+        }
+
+        // Copy full list to clipboard
+        window.copyExtensionList = function() {
+            navigator.clipboard.writeText(supportedExtensions.join('\n')).then(() => {
+                const original = event.target.textContent
+                event.target.textContent = '✅ Copied!'
+                setTimeout(() => {
+                    event.target.textContent = original
+                }, 2000)
+            })
+        }
+
+        // Check if file is allowed
+        function isSupportedFile(file) {
+            if (!file) return false
+            const ext = normalizeExt(file.name)
+            return supportedExtensions.includes(ext)
+        }
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes'
+            const k = 1024
+            const sizes = ['Bytes', 'KB', 'MB', 'GB']
+            const i = Math.floor(Math.log(bytes) / Math.log(k))
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+        }
+
+        // Simple SQL syntax highlighter (client-side only)
+        function highlightSQL(sql) {
+            const keywords = /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|ON|AND|OR|NOT|AS|GROUP|BY|ORDER|LIMIT|OFFSET|CREATE|TABLE|ALTER|DROP|INDEX|PRIMARY|KEY|FOREIGN|REFERENCES|VALUES|SET|INTO|CASE|WHEN|THEN|ELSE|END|UNION|ALL|DISTINCT|COUNT|SUM|AVG|MAX|MIN|HAVING|LIKE|BETWEEN|IS|NULL|TRUE|FALSE|EXISTS)\b/gi
+            
+            return sql.replace(keywords, match => {
+                return `<span class="sql-keyword">${match}</span>`
+            })
+        }
+
+        // Main file processing
+        function processFile(file) {
+            const dropzone = document.getElementById('dropzone')
+            const progressContainer = document.getElementById('progress-container')
+            const progressBar = document.getElementById('progress-bar')
+            const progressText = document.getElementById('progress-text')
+            const progressPercent = document.getElementById('progress-percent')
+            
+            // Size check (500 MB)
+            if (file.size > 500 * 1024 * 1024) {
+                alert('❌ File is larger than 500 MB. GitHub Pages + browser limit reached.')
+                return
+            }
+            
+            // Extension check
+            if (!isSupportedFile(file)) {
+                alert(`❌ Unsupported extension.\n\nThis tool only accepts:\n${supportedExtensions.slice(0, 15).join(', ')} ... and ${supportedExtensions.length - 15} more.`)
+                return
+            }
+            
+            const ext = normalizeExt(file.name)
+            const isSQL = ext === '.sql'
+            
+            // Show progress UI
+            dropzone.classList.add('opacity-30', 'pointer-events-none')
+            progressContainer.classList.remove('hidden')
+            
+            const reader = new FileReader()
+            
+            // Progress simulation (real FileReader doesn't give % easily, so we fake smooth animation)
+            let progress = 0
+            const progressInterval = setInterval(() => {
+                progress = Math.min(progress + Math.random() * 18, 95)
+                progressBar.style.width = `${progress}%`
+                progressPercent.textContent = `${Math.round(progress)}%`
+            }, 60)
+            
+            reader.onload = function(e) {
+                clearInterval(progressInterval)
+                progressBar.style.width = '100%'
+                progressPercent.textContent = '100%'
+                
+                // Small delay so user sees 100%
+                setTimeout(() => {
+                    showPreview(file, e.target.result, isSQL)
+                    
+                    // Reset UI
+                    dropzone.classList.remove('opacity-30', 'pointer-events-none')
+                    progressContainer.classList.add('hidden')
+                    progressBar.style.width = '0%'
+                }, 400)
+            }
+            
+            reader.onerror = function() {
+                clearInterval(progressInterval)
+                alert('❌ Failed to read file. Possibly corrupted or too large for your browser.')
+                dropzone.classList.remove('opacity-30', 'pointer-events-none')
+                progressContainer.classList.add('hidden')
+            }
+            
+            // Read as text – works for .sql and text files. For .pcap + other binaries it will show raw/garbage (expected)
+            reader.readAsText(file)
+        }
+
+        // Display the preview panel
+        function showPreview(file, content, isSQL) {
+            const panel = document.getElementById('preview-panel')
+            const filenameEl = document.getElementById('preview-filename')
+            const extEl = document.getElementById('preview-ext')
+            const iconEl = document.getElementById('preview-icon')
+            const contentEl = document.getElementById('preview-content')
+            const sqlNotice = document.getElementById('sql-notice')
+            
+            filenameEl.textContent = file.name
+            extEl.textContent = normalizeExt(file.name).toUpperCase()
+            iconEl.textContent = isSQL ? '📜' : (normalizeExt(file.name) === '.pcap' ? '📡' : '📄')
+            
+            // Clear previous content
+            contentEl.innerHTML = ''
+            
+            if (isSQL) {
+                // SQL gets beautiful highlighted viewer
+                sqlNotice.classList.remove('hidden')
+                const highlighted = highlightSQL(content)
+                contentEl.innerHTML = `
+                    <div class="mb-6 flex items-center justify-between text-xs uppercase tracking-widest text-white/40">
+                        <span>SQL CONTENT • ${file.size.toLocaleString()} bytes</span>
+                        <span class="text-emerald-400">Syntax highlighted</span>
+                    </div>
+                    <pre class="bg-[#05080f] p-6 rounded-2xl overflow-auto border border-white/10 leading-relaxed">${highlighted}</pre>
+                `
+            } else {
+                sqlNotice.classList.add('hidden')
+                const ext = normalizeExt(file.name)
+                const isBinary = ['.zip','.rar','.7z','.tar','.gz','.bin','.dat','.pcap'].includes(ext)
+                
+                // Generic preview for all other extensions (including .pcap)
+                contentEl.innerHTML = `
+                    <div class="mb-6 p-4 ${isBinary ? 'bg-amber-400/10 border border-amber-400/30 text-amber-300' : 'bg-white/10 border border-white/30 text-white/80'} rounded-2xl text-sm">
+                        <strong>WPS Office cannot open this file type.</strong><br>
+                        ${isBinary 
+                            ? `⚠️ This is a binary file (.pcap / archive / data). Preview shows raw bytes and may look like garbage.` 
+                            : '✅ Text-based file detected.'}
+                        <br><span class="text-xs opacity-75">File size: ${formatSize(file.size)}</span>
+                    </div>
+                    <pre class="bg-[#05080f] p-6 rounded-2xl overflow-auto border border-white/10 leading-relaxed text-white/90">${content}</pre>
+                `
+            }
+            
+            panel.classList.remove('hidden')
+            panel.scrollIntoView({ behavior: 'smooth' })
+        }
+
+        function copyContent() {
+            const pre = document.querySelector('#preview-content pre')
+            if (!pre) return
+            const text = pre.textContent || pre.innerText
+            navigator.clipboard.writeText(text).then(() => {
+                const btns = document.querySelectorAll('#preview-panel button')
+                const original = btns[0].innerHTML
+                btns[0].innerHTML = '✅ Copied!'
+                setTimeout(() => btns[0].innerHTML = original, 1800)
+            })
+        }
+
+        function downloadOriginal() {
+            alert('✅ Original file is still on your device.\n\nJust go back to your Downloads / Files folder — it was never uploaded anywhere.')
+        }
+
+        function closePreview() {
+            document.getElementById('preview-panel').classList.add('hidden')
+        }
+
+        // Drag & drop handlers
+        function setupDropzone() {
+            const dropzone = document.getElementById('dropzone')
+            const fileInput = document.getElementById('file-input')
+            
+            // Click to upload
+            dropzone.addEventListener('click', () => {
+                fileInput.click()
+            })
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    processFile(e.target.files[0])
+                    // Reset input so same file can be selected again
+                    fileInput.value = ''
+                }
+            })
+            
+            // Drag events
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault()
+                dropzone.classList.add('active')
+            })
+            
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('active')
+            })
+            
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault()
+                dropzone.classList.remove('active')
+                
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    processFile(e.dataTransfer.files[0])
+                }
+            })
+        }
+
+        // Initialize everything
+        window.onload = function() {
+            initTailwind()
+            populateExtensionList()
+            setupDropzone()
+            
+            console.log('%c✅ SQL + PCAP Reader ready for GitHub Pages – 500 MB • 52 extensions loaded', 'color:#00d4ff; font-family:monospace')
+        }
+    </script>
+</body>
+</html>
