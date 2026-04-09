@@ -1,398 +1,594 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocView • 500 MB File Reader</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500&amp;display=swap');
-        
-        body {
-            font-family: 'Inter', system_ui, sans-serif;
-        }
-        
-        .title-font {
-            font-family: 'Space Grotesk', sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>DocView</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        .dropzone {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .dropzone.active {
-            background-color: #0a1729;
-            border-color: #00d4ff;
-            box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.2);
-        }
-        
-        pre {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 15px;
-            line-height: 1.6;
-            tab-size: 4;
-        }
-        
-        .sql-keyword {
-            color: #ff79c6;
-            font-weight: 600;
-        }
-        
-        .modal {
-            animation: modalPop 0.2s ease-out;
-        }
-    </style>
+    body {
+      background: #0a0c10;
+      font-family: system-ui, 'Segoe UI', 'Fira Code', 'Cascadia Code', monospace;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top toolbar: minimal, stays accessible */
+    .toolbar {
+      background: #1e1f2c;
+      backdrop-filter: blur(4px);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid #2d2f3e;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      font-weight: 600;
+      background: linear-gradient(135deg, #b9f2ff, #7aa2f7);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      letter-spacing: -0.3px;
+      font-size: 1.1rem;
+    }
+
+    .file-label {
+      background: #2c2e3f;
+      padding: 0.4rem 1rem;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #cdd6f4;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      border: 1px solid #3b3e55;
+    }
+
+    .file-label:hover {
+      background: #3b3f5c;
+      border-color: #7aa2f7;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .info-badge {
+      font-size: 0.75rem;
+      background: #11131c;
+      padding: 0.3rem 0.8rem;
+      border-radius: 30px;
+      color: #a9b1d6;
+      font-family: monospace;
+    }
+
+    .view-mode-group {
+      display: flex;
+      gap: 6px;
+      background: #15171f;
+      padding: 0.2rem;
+      border-radius: 48px;
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: none;
+      padding: 0.3rem 1rem;
+      border-radius: 32px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: #9aa2c2;
+      transition: 0.1s;
+    }
+
+    .mode-btn.active {
+      background: #2c2f44;
+      color: white;
+      box-shadow: 0 1px 2px black;
+    }
+
+    /* MAIN VIEWPORT: takes all remaining space, scrollable both axes */
+    .viewport {
+      flex: 1;
+      background: #0f1117;
+      overflow: auto;
+      position: relative;
+      min-height: 0; /* flex overflow fix */
+    }
+
+    /* The content wrapper: uses pre for raw text, or custom for hex/binary */
+    .file-content {
+      padding: 1.5rem 2rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #e4e9f2;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0f1117;
+      min-width: max-content;
+    }
+
+    /* For hex/raw modes that require strict monospace & horizontal scroll */
+    .file-content.raw-pre {
+      white-space: pre;
+      font-size: 13px;
+      padding: 1rem;
+      overflow: visible;
+    }
+
+    .file-content.hexview {
+      font-family: monospace;
+      white-space: pre;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+    }
+
+    /* For table-like csv/tsv & json pretty */
+    .table-view {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .data-table {
+      border-collapse: collapse;
+      background: #12141c;
+      width: 100%;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .data-table th, .data-table td {
+      border: 1px solid #2d2f44;
+      padding: 0.5rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .data-table th {
+      background: #1a1d2b;
+      color: #bbd0ff;
+      font-weight: 600;
+    }
+
+    .error-message {
+      color: #f28b82;
+      background: #2a1a1f;
+      padding: 2rem;
+      border-left: 5px solid #f44336;
+      font-family: monospace;
+    }
+
+    /* loading indicator */
+    .loading {
+      padding: 2rem;
+      text-align: center;
+      color: #7e8aa8;
+    }
+
+    /* fallback for images / binary? show hex preview */
+    .small-note {
+      font-size: 0.7rem;
+      color: #5f6a92;
+      margin-top: 0.5rem;
+    }
+
+    /* scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1a1c26;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f445e;
+      border-radius: 8px;
+    }
+  </style>
 </head>
-<body class="bg-[#05080f] text-white min-h-screen">
-    <div class="max-w-6xl mx-auto px-6 py-8">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-x-3">
-                <div class="w-9 h-9 bg-[#00d4ff] text-black rounded-2xl flex items-center justify-center text-2xl font-bold">📄</div>
-                <h1 class="title-font text-4xl tracking-[-1px]">DocView</h1>
-                <span class="px-3 py-1 text-xs font-medium bg-[#00d4ff]/10 text-[#00d4ff] rounded-3xl border border-[#00d4ff]/30">500 MB • Client-side</span>
-            </div>
-            
-            <button onclick="showSupportedFormats()" 
-                    class="flex items-center gap-x-2 px-5 py-2.5 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-3xl transition-colors">
-                <span class="text-[#00d4ff]">▼</span>
-                Supported Formats
-            </button>
-        </div>
+<body>
 
-        <!-- Upload Area -->
-        <div id="dropzone" 
-             class="dropzone border-2 border-dashed border-white/30 hover:border-[#00d4ff]/70 rounded-3xl h-80 flex flex-col items-center justify-center cursor-pointer relative">
-            
-            <input type="file" id="file-input" class="hidden">
-            
-            <div class="text-center z-10">
-                <div class="mx-auto w-16 h-16 bg-[#00d4ff]/10 rounded-3xl flex items-center justify-center text-4xl mb-6">📤</div>
-                <h3 class="text-3xl font-semibold mb-2">Drop your file here</h3>
-                <p class="text-white/70">or click to browse • Maximum 500 MB</p>
-                <p class="text-xs text-white/50 mt-8">.sql • .pcap • and 50 other formats</p>
-            </div>
-            
-            <!-- Progress -->
-            <div id="progress-container" class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 w-96">
-                <div class="flex justify-between text-xs mb-2 font-medium">
-                    <span id="progress-text">Reading file…</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div class="h-2 bg-white/10 rounded-3xl overflow-hidden">
-                    <div id="progress-bar" class="h-2 bg-[#00d4ff] w-0 transition-all duration-300"></div>
-                </div>
-            </div>
-        </div>
+<div class="toolbar">
+  <span class="brand">📂 DocView</span>
+  <label class="file-label">
+    📁 Choose file
+    <input type="file" id="fileInput" accept=".sql,.pcap,.log,.bak,.tmp,.dat,.bin,.json,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.properties,.env,.md,.rst,.py,.js,.ts,.jsx,.tsx,.java,.cpp,.h,.c,.cs,.php,.rb,.go,.rs,.swift,.kt,.lua,.sh,.bat,.ps1,.db,.sqlite,.sqlite3,.mdb,.accdb,.dbf,.rdb,.csv,.tsv,.parquet,.avro,.orc,.zip,.rar,.7z,.tar,.gz,.txt,.text">
+  </label>
+  <div class="info-badge" id="fileInfo">No file loaded</div>
+  <div class="view-mode-group" id="modeGroup" style="margin-left: auto;">
+    <button class="mode-btn active" data-mode="auto">Auto</button>
+    <button class="mode-btn" data-mode="raw">Raw text</button>
+    <button class="mode-btn" data-mode="hex">Hex dump</button>
+  </div>
+</div>
 
-        <!-- Preview Area -->
-        <div id="preview-panel" class="hidden mt-8 bg-[#0a1729] border border-white/10 rounded-3xl overflow-hidden flex flex-col">
-            <div class="px-8 py-5 border-b border-white/10 flex items-center justify-between bg-[#05080f]">
-                <div class="flex items-center gap-x-3">
-                    <span id="preview-icon" class="text-3xl"></span>
-                    <div>
-                        <div id="preview-filename" class="font-medium text-lg"></div>
-                        <div id="preview-ext" class="text-xs font-mono text-white/50"></div>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-x-3">
-                    <button onclick="copyContent()" 
-                            class="px-6 py-2 text-sm flex items-center gap-x-2 hover:bg-white/10 rounded-2xl transition-colors">
-                        📋 Copy
-                    </button>
-                    <button onclick="closePreview()" 
-                            class="px-6 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-2xl transition-colors">
-                        Close
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Full scrollable content -->
-            <div id="preview-content" class="flex-1 p-8 overflow-auto max-h-[calc(100vh-280px)] bg-[#05080f]"></div>
-            
-            <div id="sql-notice" class="hidden px-8 py-4 bg-[#00d4ff]/10 text-xs flex items-center justify-between text-[#00d4ff]">
-                <span class="font-medium">SQL syntax highlighting enabled</span>
-                <span class="text-xs">UTF-8 decoded • Full scrollable view</span>
-            </div>
-        </div>
+<div class="viewport" id="viewport">
+  <div class="file-content" id="contentArea">
+    <div class="loading">📎 Drop or select any file — full scrollable area →<br>Supports SQL, PCAP, logs, scripts, configs, DB dumps, JSON, XML, CSV, binary preview, and 50+ formats.</div>
+  </div>
+</div>
 
-        <!-- Footer -->
-        <div class="mt-12 text-center text-xs text-white/40">
-            100% client-side • Works offline • No data leaves your browser
-        </div>
-    </div>
+<script>
+  (function(){
+    // DOM elements
+    const fileInput = document.getElementById('fileInput');
+    const viewport = document.getElementById('viewport');
+    const contentArea = document.getElementById('contentArea');
+    const fileInfoSpan = document.getElementById('fileInfo');
+    let currentFileData = null;      // store ArrayBuffer or text
+    let currentFileName = '';
+    let currentMode = 'auto';        // 'auto', 'raw', 'hex'
+    let forcedRenderMode = null;     // when auto decides
 
-    <!-- Supported Formats Modal -->
-    <div id="formats-modal" onclick="if(event.target.id === 'formats-modal') hideSupportedFormats()" 
-         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div onclick="event.stopImmediatePropagation()" 
-             class="modal bg-[#0a1729] border border-white/10 rounded-3xl max-w-lg w-full mx-4 overflow-hidden">
-            <div class="px-8 py-6 border-b border-white/10 flex items-center justify-between">
-                <h2 class="text-2xl font-semibold">Supported Formats</h2>
-                <button onclick="hideSupportedFormats()" class="text-white/70 hover:text-white text-2xl leading-none">×</button>
-            </div>
-            <div id="formats-list" class="p-8 max-h-[420px] overflow-y-auto grid grid-cols-2 gap-3 text-sm font-mono"></div>
-        </div>
-    </div>
-
-    <script>
-        // Tailwind initialization
-        function initTailwind() {
-            tailwind.config = { content: [], theme: { extend: {} } }
+    // mode buttons
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.getAttribute('data-mode');
+        if (currentFileData) {
+          renderCurrentFile(currentFileData, currentFileName);
+        } else if (currentFileName === '' && !currentFileData) {
+          // nothing loaded yet
+          contentArea.innerHTML = '<div class="loading">⬅️ Select a file to view with new mode</div>';
         }
+      });
+    });
 
-        // All supported extensions (52 total)
-        const supportedExtensions = [
-            ".sql", ".pcap",
-            ".log", ".bak", ".tmp", ".dat", ".bin",
-            ".json", ".xml", ".yaml", ".yml", ".toml",
-            ".ini", ".cfg", ".conf", ".properties", ".env",
-            ".md", ".rst",
-            ".py", ".js", ".ts", ".jsx", ".tsx",
-            ".java", ".cpp", ".h", ".c", ".cs",
-            ".php", ".rb", ".go", ".rs", ".swift",
-            ".kt", ".lua", ".sh", ".bat", ".ps1",
-            ".db", ".sqlite", ".sqlite3", ".mdb", ".accdb",
-            ".dbf", ".rdb",
-            ".csv", ".tsv",
-            ".parquet", ".avro", ".orc",
-            ".zip", ".rar", ".7z", ".tar", ".gz"
-        ]
+    // handle file selection
+    fileInput.addEventListener('change', onFileSelected);
+    // drag & drop on entire window / viewport? improve UX
+    document.body.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.body.style.opacity = '0.95';
+    });
+    document.body.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      document.body.style.opacity = '1';
+    });
+    document.body.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.body.style.opacity = '1';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        handleFile(files[0]);
+      }
+    });
 
-        const textExtensions = [".sql",".log",".json",".xml",".yaml",".yml",".toml",".ini",".cfg",".conf",".properties",".env",".md",".rst",".py",".js",".ts",".jsx",".tsx",".java",".cpp",".h",".c",".cs",".php",".rb",".go",".rs",".swift",".kt",".lua",".sh",".bat",".ps1",".csv",".tsv"]
+    async function onFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      await handleFile(file);
+    }
 
-        function normalizeExt(filename) {
-            return filename.slice(filename.lastIndexOf('.')).toLowerCase()
+    async function handleFile(file) {
+      if (!file) return;
+      currentFileName = file.name;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const sizeMB = (file.size / (1024*1024)).toFixed(2);
+      fileInfoSpan.innerText = `${file.name} (${sizeMB} MB) | ${ext.toUpperCase()}`;
+      
+      // read as ArrayBuffer for binary or text detection
+      const buffer = await file.arrayBuffer();
+      currentFileData = buffer;
+      renderCurrentFile(buffer, file.name);
+    }
+
+    // =============== CORE RENDERING ENGINE ================
+    async function renderCurrentFile(buffer, filename) {
+      if (!buffer) {
+        contentArea.innerHTML = '<div class="error-message">⚠️ No data loaded</div>';
+        return;
+      }
+      const mode = currentMode;
+      const ext = filename.split('.').pop().toLowerCase();
+      const fileSize = buffer.byteLength;
+      
+      // if mode === hex: always show hex dump (first 2MB or full? but performance safe)
+      if (mode === 'hex') {
+        renderHexDump(buffer, 1024 * 1024 * 4); // max 4MB preview, but scroll handles huge
+        return;
+      }
+      
+      // if mode === raw: force text decoding (best effort)
+      if (mode === 'raw') {
+        renderAsRawText(buffer);
+        return;
+      }
+      
+      // AUTO MODE: smart detection based on extension & content sniff
+      if (mode === 'auto') {
+        // known binary extensions: pcap, bin, dat, bak, tmp, dbf, mdb, accdb, rdb, parquet, avro, orc, zip, rar, 7z, tar, gz, db, sqlite etc
+        const binaryExts = ['pcap', 'bin', 'dat', 'bak', 'tmp', 'dbf', 'mdb', 'accdb', 'rdb', 'parquet', 'avro', 'orc', 'zip', 'rar', '7z', 'tar', 'gz', 'db', 'sqlite', 'sqlite3', 'mdf', 'ldf'];
+        const imageLike = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+        const isKnownBinary = binaryExts.includes(ext);
+        const isImage = imageLike.includes(ext);
+        
+        // For SQL, LOG, scripts, configs, json, yaml, md -> treat as text
+        const textExts = ['sql', 'log', 'txt', 'json', 'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'properties', 'env', 'md', 'rst', 'py', 'js', 'ts', 'jsx', 'tsx', 'java', 'cpp', 'h', 'c', 'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'lua', 'sh', 'bat', 'ps1', 'csv', 'tsv', 'css', 'html', 'htm'];
+        if (textExts.includes(ext)) {
+          renderAsTextWithSyntax(buffer, filename);
+          return;
         }
-
-        function isSupportedFile(file) {
-            if (!file) return false
-            const ext = normalizeExt(file.name)
-            return supportedExtensions.includes(ext)
+        
+        // Special for pcap, binary: try to show human-readable strings + hex fallback
+        if (isKnownBinary || isImage || fileSize > 1024*1024 && ext !== 'csv') {
+          // offer hexdump with note
+          renderHexDump(buffer, 1024*1024*2);
+          return;
         }
-
-        function formatSize(bytes) {
-            if (bytes === 0) return '0 Bytes'
-            const k = 1024
-            const sizes = ['Bytes', 'KB', 'MB', 'GB']
-            const i = Math.floor(Math.log(bytes) / Math.log(k))
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+        
+        // Default: try UTF-8 text, if too many invalid -> fallback to hex
+        const textPreview = tryDecodeUTF8(buffer.slice(0, 8192));
+        if (textPreview.includes('�') || (buffer.byteLength > 0 && !isLikelyText(buffer))) {
+          renderHexDump(buffer, 1024*1024*2);
+        } else {
+          renderAsTextWithSyntax(buffer, filename);
         }
-
-        // Simple SQL syntax highlighter
-        function highlightSQL(sql) {
-            const keywords = /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|ON|AND|OR|NOT|AS|GROUP|BY|ORDER|LIMIT|OFFSET|CREATE|TABLE|ALTER|DROP|INDEX|PRIMARY|KEY|FOREIGN|REFERENCES|VALUES|SET|INTO|CASE|WHEN|THEN|ELSE|END|UNION|ALL|DISTINCT|COUNT|SUM|AVG|MAX|MIN|HAVING|LIKE|BETWEEN|IS|NULL|TRUE|FALSE|EXISTS)\b/gi
-            return sql.replace(keywords, match => `<span class="sql-keyword">${match}</span>`)
+      }
+    }
+    
+    // helper: heuristic to check if buffer contains high proportion of printable ASCII / UTF-8
+    function isLikelyText(buffer, sampleSize = 2048) {
+      const view = new Uint8Array(buffer.slice(0, sampleSize));
+      let printableCount = 0;
+      for (let i = 0; i < view.length; i++) {
+        const byte = view[i];
+        if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126)) printableCount++;
+        else if (byte >= 128 && byte <= 245) { // possible utf8 multibyte
+          printableCount++;
         }
-
-        // Simple hex dump (scrollable, professional)
-        function createHexDump(arrayBuffer) {
-            const bytes = new Uint8Array(arrayBuffer)
-            let hex = ''
-            const lineLength = 16
-            
-            for (let i = 0; i < bytes.length; i += lineLength) {
-                const chunk = bytes.slice(i, i + lineLength)
-                const hexLine = Array.from(chunk).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')
-                const asciiLine = Array.from(chunk).map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('')
-                const address = i.toString(16).padStart(8, '0').toUpperCase()
-                
-                hex += `<span class="text-white/40">${address}</span>  \( {hexLine.padEnd(47, ' ')}  <span class="text-white/70"> \){asciiLine}</span>\n`
+      }
+      return (printableCount / view.length) > 0.85;
+    }
+    
+    function tryDecodeUTF8(bufferSlice) {
+      const decoder = new TextDecoder('utf-8', { fatal: false });
+      return decoder.decode(bufferSlice);
+    }
+    
+    // render as raw text with monospace, scrollable horizontally if needed
+    function renderAsRawText(buffer) {
+      let fullText = '';
+      try {
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        fullText = decoder.decode(buffer);
+      } catch(e) {
+        fullText = '⚠️ Could not decode as UTF-8. Showing fallback:\n' + new Uint8Array(buffer.slice(0, 500)).toString();
+      }
+      contentArea.innerHTML = '';
+      contentArea.className = 'file-content raw-pre';
+      const preEl = document.createElement('pre');
+      preEl.style.margin = '0';
+      preEl.style.whiteSpace = 'pre-wrap';
+      preEl.style.wordBreak = 'break-all';
+      preEl.style.fontFamily = 'monospace';
+      preEl.style.background = '#0f1117';
+      preEl.style.color = '#e9eef7';
+      preEl.textContent = fullText;
+      contentArea.appendChild(preEl);
+      // ensure horizontal scroll if lines are long: using pre-wrap works, but to enable horizontal scrolling we need overflow:auto on parent
+      // viewport already overflow auto, but pre-wrap wraps. We want left-right scroll if lines huge. Better set white-space: pre
+      preEl.style.whiteSpace = 'pre';
+      preEl.style.overflowX = 'auto';
+      preEl.style.display = 'block';
+      preEl.style.width = 'max-content';
+      preEl.style.minWidth = '100%';
+    }
+    
+    function renderAsTextWithSyntax(buffer, filename) {
+      let text = '';
+      try {
+        text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+      } catch(e) { text = 'Decoding error: ' + e.message; }
+      const ext = filename.split('.').pop().toLowerCase();
+      // optionally add syntax highlight hint but keep plain monospace for performance (no extra lib)
+      contentArea.innerHTML = '';
+      contentArea.className = 'file-content';
+      const preBlock = document.createElement('pre');
+      preBlock.style.whiteSpace = 'pre-wrap';
+      preBlock.style.wordBreak = 'break-word';
+      preBlock.style.fontFamily = 'inherit';
+      preBlock.style.margin = '0';
+      preBlock.textContent = text;
+      contentArea.appendChild(preBlock);
+      // If CSV or TSV, optionally render table toggle? but we keep consistent raw + maybe button but fine
+      if (ext === 'csv' || ext === 'tsv') {
+        const delimiter = ext === 'csv' ? ',' : '\t';
+        // try to parse first 1000 rows and generate a table view in a collapsible? but not to overload. We'll add a small interactive table above raw.
+        const tableWrapper = document.createElement('div');
+        tableWrapper.style.marginBottom = '1rem';
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '📊 Show as table preview (first rows)';
+        toggleBtn.style.background = '#2c2f44';
+        toggleBtn.style.border = 'none';
+        toggleBtn.style.color = 'white';
+        toggleBtn.style.padding = '6px 12px';
+        toggleBtn.style.borderRadius = '20px';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.fontSize = '12px';
+        let tableShown = false;
+        let tableDiv = null;
+        toggleBtn.onclick = () => {
+          if (!tableShown) {
+            if (!tableDiv) {
+              tableDiv = document.createElement('div');
+              tableDiv.className = 'table-view';
+              const parsed = parseCSVorTSV(text, delimiter, 200);
+              if (parsed.rows.length > 0) {
+                const tbl = buildDataTable(parsed.rows);
+                tableDiv.appendChild(tbl);
+              } else {
+                tableDiv.innerHTML = '<div class="error-message">Failed to parse CSV/TSV structure</div>';
+              }
             }
-            return hex
-        }
-
-        function processFile(file) {
-            const dropzone = document.getElementById('dropzone')
-            const progressContainer = document.getElementById('progress-container')
-            const progressBar = document.getElementById('progress-bar')
-            const progressText = document.getElementById('progress-text')
-            const progressPercent = document.getElementById('progress-percent')
-            
-            if (file.size > 500 * 1024 * 1024) {
-                alert('File exceeds 500 MB limit.')
-                return
+            if (tableDiv.parentNode !== contentArea) {
+              contentArea.insertBefore(tableDiv, contentArea.firstChild);
             }
-            
-            if (!isSupportedFile(file)) {
-                alert('This file format is not supported.\n\nPlease use one of the supported formats listed in the dropdown.')
-                return
-            }
-            
-            const ext = normalizeExt(file.name)
-            const isSQL = ext === '.sql'
-            
-            dropzone.classList.add('opacity-30', 'pointer-events-none')
-            progressContainer.classList.remove('hidden')
-            
-            const reader = new FileReader()
-            
-            let progress = 0
-            const progressInterval = setInterval(() => {
-                progress = Math.min(progress + Math.random() * 22, 98)
-                progressBar.style.width = `${progress}%`
-                progressPercent.textContent = `${Math.round(progress)}%`
-            }, 45)
-            
-            reader.onload = function(e) {
-                clearInterval(progressInterval)
-                progressBar.style.width = '100%'
-                progressPercent.textContent = '100%'
-                
-                setTimeout(() => {
-                    showPreview(file, e.target.result, isSQL)
-                    dropzone.classList.remove('opacity-30', 'pointer-events-none')
-                    progressContainer.classList.add('hidden')
-                    progressBar.style.width = '0%'
-                }, 300)
-            }
-            
-            reader.onerror = function() {
-                clearInterval(progressInterval)
-                alert('Unable to read the file. It may be corrupted or too large for your browser.')
-                dropzone.classList.remove('opacity-30', 'pointer-events-none')
-                progressContainer.classList.add('hidden')
-            }
-            
-            // Always read as ArrayBuffer for maximum compatibility
-            reader.readAsArrayBuffer(file)
+            toggleBtn.textContent = '📄 Hide table preview';
+          } else {
+            if (tableDiv && tableDiv.parentNode) tableDiv.remove();
+            toggleBtn.textContent = '📊 Show as table preview (first rows)';
+          }
+          tableShown = !tableShown;
+        };
+        contentArea.insertBefore(toggleBtn, contentArea.firstChild);
+        contentArea.insertBefore(document.createElement('hr'), contentArea.firstChild);
+      }
+      // for JSON auto pretty?
+      if (ext === 'json') {
+        try {
+          const parsed = JSON.parse(text);
+          const pretty = JSON.stringify(parsed, null, 2);
+          preBlock.textContent = pretty;
+        } catch(e) { /* keep as raw */ }
+      }
+    }
+    
+    function parseCSVorTSV(rawStr, delimiter, maxRows=500) {
+      const lines = rawStr.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length === 0) return { rows: [] };
+      const rows = [];
+      for (let i=0; i<Math.min(lines.length, maxRows); i++) {
+        const line = lines[i];
+        let row = [];
+        if (delimiter === ',') {
+          row = parseCSVLine(line);
+        } else {
+          row = line.split(delimiter);
         }
-
-        function showPreview(file, arrayBuffer, isSQL) {
-            const panel = document.getElementById('preview-panel')
-            const filenameEl = document.getElementById('preview-filename')
-            const extEl = document.getElementById('preview-ext')
-            const iconEl = document.getElementById('preview-icon')
-            const contentEl = document.getElementById('preview-content')
-            const sqlNotice = document.getElementById('sql-notice')
-            
-            filenameEl.textContent = file.name
-            extEl.textContent = normalizeExt(file.name).toUpperCase()
-            iconEl.textContent = isSQL ? '📜' : (normalizeExt(file.name) === '.pcap' ? '📡' : '📄')
-            
-            contentEl.innerHTML = ''
-            sqlNotice.classList.add('hidden')
-            
-            const ext = normalizeExt(file.name)
-            
-            if (isSQL) {
-                // SQL: UTF-8 decode + syntax highlight + full scrollable
-                sqlNotice.classList.remove('hidden')
-                const decoder = new TextDecoder('utf-8', { fatal: false })
-                const text = decoder.decode(arrayBuffer)
-                const highlighted = highlightSQL(text)
-                contentEl.innerHTML = `
-                    <div class="mb-6 text-xs uppercase tracking-widest text-white/40 flex justify-between">
-                        <span>SQL FILE • ${formatSize(file.size)}</span>
-                        <span class="text-emerald-400">Fully decoded • Scrollable</span>
-                    </div>
-                    <pre class="bg-[#05080f] p-8 rounded-2xl border border-white/10 overflow-auto leading-relaxed text-white/90">${highlighted}</pre>
-                `
-            } else {
-                const isTextFile = textExtensions.includes(ext)
-                
-                if (isTextFile) {
-                    // Text file: UTF-8 decode
-                    const decoder = new TextDecoder('utf-8', { fatal: false })
-                    const text = decoder.decode(arrayBuffer)
-                    contentEl.innerHTML = `
-                        <div class="mb-6 text-xs uppercase tracking-widest text-white/40">TEXT FILE • ${formatSize(file.size)} • UTF-8 decoded</div>
-                        <pre class="bg-[#05080f] p-8 rounded-2xl border border-white/10 overflow-auto leading-relaxed text-white/90">${text}</pre>
-                    `
-                } else {
-                    // Binary file (.pcap, .zip, etc.): professional hex dump
-                    const hexContent = createHexDump(arrayBuffer)
-                    contentEl.innerHTML = `
-                        <div class="mb-6 text-xs uppercase tracking-widest text-amber-400 flex items-center gap-x-2">
-                            <span>BINARY FILE</span>
-                            <span class="flex-1 h-px bg-white/10"></span>
-                            <span>${formatSize(file.size)} • Scrollable hex view</span>
-                        </div>
-                        <pre class="bg-[#05080f] p-8 rounded-2xl border border-white/10 overflow-auto leading-relaxed text-white/90 font-light">${hexContent}</pre>
-                        <div class="mt-6 text-xs text-white/50 text-center">Full raw data • No external parsers used</div>
-                    `
-                }
-            }
-            
-            panel.classList.remove('hidden')
-            panel.scrollIntoView({ behavior: 'smooth' })
+        rows.push(row);
+      }
+      return { rows };
+    }
+    
+    function parseCSVLine(line) {
+      const result = [];
+      let inQuote = false;
+      let current = '';
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuote && line[i+1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuote = !inQuote;
+          }
+        } else if (ch === ',' && !inQuote) {
+          result.push(current);
+          current = '';
+        } else {
+          current += ch;
         }
-
-        function copyContent() {
-            const pre = document.querySelector('#preview-content pre')
-            if (!pre) return
-            const text = pre.textContent || pre.innerText
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('#preview-panel button')
-                const original = btn.innerHTML
-                btn.innerHTML = '✅ Copied'
-                setTimeout(() => { btn.innerHTML = original }, 1600)
-            })
+      }
+      result.push(current);
+      return result.map(cell => cell.trim());
+    }
+    
+    function buildDataTable(rows) {
+      const table = document.createElement('table');
+      table.className = 'data-table';
+      if (rows.length === 0) return table;
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const maxCols = Math.max(...rows.map(r => r.length));
+      for (let i=0; i<maxCols; i++) {
+        const th = document.createElement('th');
+        th.textContent = `Col ${i+1}`;
+        headerRow.appendChild(th);
+      }
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      for (let rowIdx=0; rowIdx<rows.length; rowIdx++) {
+        const rowCells = rows[rowIdx];
+        const tr = document.createElement('tr');
+        for (let c=0; c<maxCols; c++) {
+          const td = document.createElement('td');
+          td.textContent = rowCells[c] !== undefined ? rowCells[c] : '';
+          tr.appendChild(td);
         }
-
-        function closePreview() {
-            document.getElementById('preview-panel').classList.add('hidden')
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      return table;
+    }
+    
+    // Hex dump rendering: show offset + hex + ascii, scrollable infinitely
+    function renderHexDump(buffer, maxBytes = 1024 * 1024 * 10) {
+      const bytesToShow = Math.min(buffer.byteLength, maxBytes);
+      const uint8 = new Uint8Array(buffer.slice(0, bytesToShow));
+      const lines = [];
+      const bytesPerLine = 16;
+      for (let i = 0; i < uint8.length; i += bytesPerLine) {
+        let hexPart = '';
+        let asciiPart = '';
+        for (let j = 0; j < bytesPerLine; j++) {
+          const idx = i + j;
+          if (idx < uint8.length) {
+            const byte = uint8[idx];
+            hexPart += byte.toString(16).padStart(2, '0') + ' ';
+            asciiPart += (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+          } else {
+            hexPart += '   ';
+            asciiPart += ' ';
+          }
         }
-
-        function showSupportedFormats() {
-            const container = document.getElementById('formats-list')
-            container.innerHTML = ''
-            
-            supportedExtensions.forEach(ext => {
-                const div = document.createElement('div')
-                div.className = 'px-4 py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-center transition-colors'
-                div.textContent = ext
-                container.appendChild(div)
-            })
-            
-            document.getElementById('formats-modal').classList.remove('hidden')
-            document.getElementById('formats-modal').classList.add('flex')
-        }
-
-        function hideSupportedFormats() {
-            const modal = document.getElementById('formats-modal')
-            modal.classList.add('hidden')
-            modal.classList.remove('flex')
-        }
-
-        // Drag & drop + click handlers
-        function setupDropzone() {
-            const dropzone = document.getElementById('dropzone')
-            const fileInput = document.getElementById('file-input')
-            
-            dropzone.addEventListener('click', () => fileInput.click())
-            
-            fileInput.addEventListener('change', e => {
-                if (e.target.files && e.target.files[0]) {
-                    processFile(e.target.files[0])
-                    fileInput.value = ''
-                }
-            })
-            
-            dropzone.addEventListener('dragover', e => {
-                e.preventDefault()
-                dropzone.classList.add('active')
-            })
-            
-            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('active'))
-            
-            dropzone.addEventListener('drop', e => {
-                e.preventDefault()
-                dropzone.classList.remove('active')
-                if (e.dataTransfer.files && e.dataTransfer.files.length) {
-                    processFile(e.dataTransfer.files[0])
-                }
-            })
-        }
-
-        // Initialize
-        window.onload = function() {
-            initTailwind()
-            setupDropzone()
-            
-            console.log('%c✅ DocView initialized • Full scrollable previews • UTF-8 decoding enabled', 'color:#00d4ff; font-family:monospace')
-        }
-    </script>
+        const offset = i.toString(16).padStart(8, '0');
+        lines.push(`${offset}  ${hexPart.padEnd(48)} |${asciiPart}|`);
+      }
+      const hexText = lines.join('\n');
+      if (buffer.byteLength > maxBytes) {
+        const extraNote = `\n\n... truncated (showing first ${(maxBytes/1024/1024).toFixed(1)} MB). Full file size: ${(buffer.byteLength/1024/1024).toFixed(2)} MB`;
+        contentArea.innerHTML = '';
+        contentArea.className = 'file-content hexview';
+        const pre = document.createElement('pre');
+        pre.textContent = hexText + extraNote;
+        pre.style.whiteSpace = 'pre';
+        pre.style.fontSize = '12px';
+        pre.style.overflow = 'visible';
+        contentArea.appendChild(pre);
+      } else {
+        contentArea.innerHTML = '';
+        contentArea.className = 'file-content hexview';
+        const pre = document.createElement('pre');
+        pre.textContent = hexText;
+        pre.style.whiteSpace = 'pre';
+        contentArea.appendChild(pre);
+      }
+    }
+    
+    // Edge helper for pcap etc note
+    // Add note when displaying binary hex
+    window.addEventListener('load', () => {
+      // if initial drop hint
+      const dropZone = document.body;
+    });
+  })();
+</script>
 </body>
-                        </html>
+    </html>
